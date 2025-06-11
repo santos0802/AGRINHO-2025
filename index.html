@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Caminhos da Colheita</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: #f0f0f0;
+      font-family: sans-serif;
+    }
+    canvas {
+      display: block;
+      margin: 0 auto;
+      border: 2px solid #444;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+  let trator;
+  let produtos = [];
+  let entregas = [];
+  let bandeirinhas = [];
+  let pontuacao = 0;
+  let tempoLimite = 60;
+  let tempoInicial;
+  let coletado = null;
+
+  let nomesProdutos = ["Milho", "Queijo", "Fruta"];
+  let coresProdutos = {};
+
+  function setup() {
+    createCanvas(800, 400);
+    trator = createVector(100, height / 2);
+    tempoInicial = millis();
+
+    coresProdutos = {
+      "Milho": color(255, 215, 0),
+      "Queijo": color(255, 255, 150),
+      "Fruta": color(255, 100, 100)
+    };
+
+    gerarProdutos();
+    gerarEntregas();
+  }
+
+  function draw() {
+    background(220);
+    desenharCenario();
+    desenharProdutos();
+    desenharEntregas();
+    desenharTrator();
+    desenharBandeirinhas();
+    verificarColeta();
+    verificarEntrega();
+    mostrarUI();
+
+    if (tempoRestante() <= 0) {
+      fimDeJogo();
+      noLoop();
+    }
+  }
+
+  function desenharCenario() {
+    noStroke();
+    fill(150, 255, 150);
+    rect(0, 0, 400, height);
+    fill(180, 220, 255);
+    rect(400, 0, 400, height);
+    textSize(24);
+    fill(0);
+    text("Campo", 150, 30);
+    text("Cidade", 550, 30);
+  }
+
+  function desenharTrator() {
+    fill(0, 100, 255);
+    rect(trator.x, trator.y, 30, 30);
+
+    if (keyIsDown(LEFT_ARROW)) trator.x -= 2;
+    if (keyIsDown(RIGHT_ARROW)) trator.x += 2;
+    if (keyIsDown(UP_ARROW)) trator.y -= 2;
+    if (keyIsDown(DOWN_ARROW)) trator.y += 2;
+
+    trator.x = constrain(trator.x, 0, width - 30);
+    trator.y = constrain(trator.y, 0, height - 30);
+  }
+
+  function gerarProdutos() {
+    for (let i = 0; i < 5; i++) {
+      let tipo = random(nomesProdutos);
+      produtos.push({
+        tipo: tipo,
+        pos: createVector(random(50, 350), random(60, height - 50))
+      });
+    }
+  }
+
+  function gerarEntregas() {
+    for (let i = 0; i < 5; i++) {
+      let tipo = random(nomesProdutos);
+      entregas.push({
+        tipo: tipo,
+        pos: createVector(random(450, 750), random(60, height - 50))
+      });
+    }
+  }
+
+  function desenharProdutos() {
+    for (let p of produtos) {
+      fill(coresProdutos[p.tipo]);
+      ellipse(p.pos.x, p.pos.y, 20, 20);
+      fill(0);
+      textSize(10);
+      text(p.tipo, p.pos.x - 15, p.pos.y + 15);
+    }
+  }
+
+  function desenharEntregas() {
+    for (let e of entregas) {
+      fill(coresProdutos[e.tipo]);
+      rect(e.pos.x, e.pos.y, 25, 25);
+      fill(0);
+      textSize(10);
+      text("Feira (" + e.tipo + ")", e.pos.x - 15, e.pos.y + 40);
+    }
+  }
+
+  function verificarColeta() {
+    if (coletado === null) {
+      for (let i = produtos.length - 1; i >= 0; i--) {
+        if (dist(trator.x, trator.y, produtos[i].pos.x, produtos[i].pos.y) < 25) {
+          coletado = produtos[i];
+          produtos.splice(i, 1);
+          break;
+        }
+      }
+    }
+  }
+
+  function verificarEntrega() {
+    if (coletado !== null) {
+      for (let i = entregas.length - 1; i >= 0; i--) {
+        if (dist(trator.x, trator.y, entregas[i].pos.x, entregas[i].pos.y) < 30) {
+          if (coletado.tipo === entregas[i].tipo) {
+            pontuacao += 10;
+            bandeirinhas.push(entregas[i].pos.copy());
+            entregas.splice(i, 1);
+            coletado = null;
+            gerarProdutos();
+            gerarEntregas();
+          }
+        }
+      }
+    }
+  }
+
+  function desenharBandeirinhas() {
+    for (let b of bandeirinhas) {
+      for (let i = 0; i < 5; i++) {
+        fill(random(255), random(255), random(255));
+        triangle(b.x + i * 8, b.y, b.x + i * 8 + 4, b.y - 10, b.x + i * 8 + 8, b.y);
+      }
+    }
+  }
+
+  function mostrarUI() {
+    fill(0);
+    textSize(16);
+    text("Pontuação: " + pontuacao, 10, height - 20);
+    text("Tempo: " + tempoRestante() + "s", 150, height - 20);
+    if (coletado) {
+      text("Carregando: " + coletado.tipo, 300, height - 20);
+    } else {
+      text("Sem carga", 300, height - 20);
+    }
+  }
+
+  function tempoRestante() {
+    let t = tempoLimite - int((millis() - tempoInicial) / 1000);
+    return max(t, 0);
+  }
+
+  function fimDeJogo() {
+    background(0, 150);
+    fill(255);
+    textSize(32);
+    textAlign(CENTER, CENTER);
+    text("Fim de Jogo!", width / 2, height / 2 - 30);
+    text("Pontuação final: " + pontuacao, width / 2, height / 2 + 10);
+    text("Recarregue a página para jogar novamente", width / 2, height / 2 + 50);
+  }
+</script>
+
+</body>
+</html>
